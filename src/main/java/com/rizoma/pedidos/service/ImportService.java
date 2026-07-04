@@ -1,8 +1,10 @@
 package com.rizoma.pedidos.service;
 
+import com.rizoma.pedidos.domain.Categoria;
 import com.rizoma.pedidos.domain.Presentacion;
 import com.rizoma.pedidos.domain.Producto;
 import com.rizoma.pedidos.dto.Dtos.ImportResultDTO;
+import com.rizoma.pedidos.repo.CategoriaRepository;
 import com.rizoma.pedidos.repo.ProductoRepository;
 import org.apache.poi.ss.usermodel.*;
 import org.springframework.http.HttpStatus;
@@ -19,17 +21,18 @@ import java.util.*;
  * Carga masiva desde el Excel normalizado (una fila por presentación).
  * Columnas esperadas (encabezado en la fila 1, nombres flexibles):
  *   categoria | marca | producto | presentacion | precio | notas
- * Las filas con la misma (categoria, marca, producto) se agrupan en un producto
- * con varias presentaciones. Es un upsert: reemplaza las presentaciones del
- * producto por las del archivo.
+ * Agrupa por (categoria, marca, producto) y hace upsert. La categoría se
+ * busca por nombre y, si no existe, se crea.
  */
 @Service
 public class ImportService {
 
     private final ProductoRepository productoRepo;
+    private final CategoriaRepository categoriaRepo;
 
-    public ImportService(ProductoRepository productoRepo) {
+    public ImportService(ProductoRepository productoRepo, CategoriaRepository categoriaRepo) {
         this.productoRepo = productoRepo;
+        this.categoriaRepo = categoriaRepo;
     }
 
     @Transactional
@@ -48,10 +51,13 @@ public class ImportService {
 
             DataFormatter fmt = new DataFormatter();
 
-            // índice de productos existentes por clave natural
             Map<String, Producto> existentes = new HashMap<>();
-            for (Producto p : productoRepo.findAllByOrderByCategoriaAscOrdenAsc()) {
-                existentes.put(clave(p.getCategoria(), p.getMarca(), p.getNombre()), p);
+            for (Producto p : productoRepo.findTodosOrdenados()) {
+                existentes.put(clave(p.getCategoria().getNombre(), p.getMarca(), p.getNombre()), p);
+            }
+            Map<String, Categoria> catCache = new HashMap<>();
+            for (Categoria c : categoriaRepo.findAll()) {
+                catCache.put(c.getNombre().trim().toLowerCase(), c);
             }
             Map<String, Producto> tocados = new LinkedHashMap<>();
 
@@ -65,7 +71,7 @@ public class ImportService {
                 String notas = str(row, col.get("notas"), fmt);
                 BigDecimal precio = num(row, col.get("precio"));
 
-                if (isBlank(nombre) && isBlank(categoria)) continue; // fila vacía
+                if (isBlank(nombre) && isBlank(categoria)) continue;
                 if (isBlank(nombre)) { avisos.add("Fila " + (r + 1) + ": sin nombre de producto, ignorada."); continue; }
                 if (isBlank(categoria)) categoria = "SIN CATEGORIA";
 
@@ -75,7 +81,7 @@ public class ImportService {
                     p = existentes.get(key);
                     if (p == null) { p = new Producto(); creados++; }
                     else { actualizados++; }
-                    p.setCategoria(categoria.trim());
+                    p.setCategoria(resolverCategoria(categoria, catCache));
                     p.setMarca(isBlank(marca) ? null : marca.trim());
                     p.setNombre(nombre.trim());
                     p.setNotas(isBlank(notas) ? null : notas.trim());
@@ -96,6 +102,21 @@ public class ImportService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No se pudo leer el Excel: " + e.getMessage());
         }
         return new ImportResultDTO(creados, actualizados, presentaciones, avisos);
+    }
+
+    private Categoria resolverCategoria(String nombre, Map<String, Categoria> cache) {
+        String key = nombre.trim().toLowerCase();
+        Categoria c = cache.get(key);
+        if (c != null) return c;
+        c = new Categoria();
+        c.setNombre(nombre.trim());
+        int max = cache.values().stream().map(Categoria::getOrden)
+                .filter(Objects::nonNull).mapToInt(Integer::intValue).max().orElse(0);
+        c.setOrden(max + 1);
+        c.setActiva(true);
+        c = categoriaRepo.save(c);
+        cache.put(key, c);
+        return c;
     }
 
     private static Map<String, Integer> mapearColumnas(Row header) {
@@ -134,7 +155,6 @@ public class ImportService {
         }
         String s = cell.toString().replaceAll("[^0-9.,]", "").trim();
         if (s.isEmpty()) return null;
-        // separador argentino: los puntos son de miles salvo el último grupo de 2 dígitos
         s = s.replace(",", ".");
         String[] parts = s.split("\\.");
         if (parts.length > 1 && parts[parts.length - 1].length() == 2) {

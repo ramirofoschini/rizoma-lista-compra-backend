@@ -12,8 +12,9 @@ public class Producto {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "categoria", nullable = false)
-    private String categoria;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "categoria_id", nullable = false)
+    private Categoria categoria;
 
     @Column(name = "marca")
     private String marca;
@@ -42,8 +43,8 @@ public class Producto {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public String getCategoria() { return categoria; }
-    public void setCategoria(String categoria) { this.categoria = categoria; }
+    public Categoria getCategoria() { return categoria; }
+    public void setCategoria(Categoria categoria) { this.categoria = categoria; }
     public String getMarca() { return marca; }
     public void setMarca(String marca) { this.marca = marca; }
     public String getNombre() { return nombre; }

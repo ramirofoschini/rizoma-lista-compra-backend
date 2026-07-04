@@ -2,6 +2,7 @@ package com.rizoma.pedidos.web;
 
 import com.rizoma.pedidos.dto.Dtos.*;
 import com.rizoma.pedidos.service.CatalogoService;
+import com.rizoma.pedidos.service.CategoriaService;
 import com.rizoma.pedidos.service.ImportService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -17,11 +18,37 @@ import java.util.List;
 public class AdminController {
 
     private final CatalogoService catalogoService;
+    private final CategoriaService categoriaService;
     private final ImportService importService;
 
-    public AdminController(CatalogoService catalogoService, ImportService importService) {
+    public AdminController(CatalogoService catalogoService, CategoriaService categoriaService,
+                           ImportService importService) {
         this.catalogoService = catalogoService;
+        this.categoriaService = categoriaService;
         this.importService = importService;
+    }
+
+    // ---- Categorías ----
+    @GetMapping("/categorias")
+    public List<CategoriaItem> listarCategorias() {
+        return categoriaService.todas();
+    }
+
+    @PostMapping("/categorias")
+    @ResponseStatus(HttpStatus.CREATED)
+    public CategoriaItem crearCategoria(@Valid @RequestBody CategoriaInput in) {
+        return categoriaService.crear(in);
+    }
+
+    @PutMapping("/categorias/{id}")
+    public CategoriaItem actualizarCategoria(@PathVariable Long id, @Valid @RequestBody CategoriaInput in) {
+        return categoriaService.actualizar(id, in);
+    }
+
+    @DeleteMapping("/categorias/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void desactivarCategoria(@PathVariable Long id) {
+        categoriaService.desactivar(id);
     }
 
     @GetMapping("/productos")

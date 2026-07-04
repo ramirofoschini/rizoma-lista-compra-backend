@@ -1,8 +1,10 @@
 package com.rizoma.pedidos.service;
 
+import com.rizoma.pedidos.domain.Categoria;
 import com.rizoma.pedidos.domain.Presentacion;
 import com.rizoma.pedidos.domain.Producto;
 import com.rizoma.pedidos.dto.Dtos.*;
+import com.rizoma.pedidos.repo.CategoriaRepository;
 import com.rizoma.pedidos.repo.ProductoRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -18,24 +20,25 @@ import java.util.Map;
 public class CatalogoService {
 
     private final ProductoRepository productoRepo;
+    private final CategoriaRepository categoriaRepo;
 
-    public CatalogoService(ProductoRepository productoRepo) {
+    public CatalogoService(ProductoRepository productoRepo, CategoriaRepository categoriaRepo) {
         this.productoRepo = productoRepo;
+        this.categoriaRepo = categoriaRepo;
     }
 
-    /** Catálogo público agrupado por categoría (solo productos y presentaciones activos). */
+    /** Catálogo público agrupado por categoría (solo activos), en orden de categoría. */
     @Transactional(readOnly = true)
     public List<CategoriaDTO> catalogoPorCategoria() {
         Map<String, List<ProductoDTO>> porCat = new LinkedHashMap<>();
-        for (Producto p : productoRepo.findByActivoTrueOrderByCategoriaAscOrdenAsc()) {
+        for (Producto p : productoRepo.findActivosOrdenados()) {
             List<PresentacionDTO> pres = p.getPresentaciones().stream()
                     .filter(Presentacion::isActivo)
                     .map(this::toPresentacionDTO)
                     .toList();
-            if (pres.isEmpty()) continue; // sin presentaciones activas no se muestra
-            porCat.computeIfAbsent(p.getCategoria(), k -> new ArrayList<>())
-                    .add(new ProductoDTO(p.getId(), p.getCategoria(), p.getMarca(),
-                            p.getNombre(), p.getNotas(), pres));
+            if (pres.isEmpty()) continue;
+            porCat.computeIfAbsent(p.getCategoria().getNombre(), k -> new ArrayList<>())
+                    .add(toProductoDTO(p, pres));
         }
         return porCat.entrySet().stream()
                 .map(e -> new CategoriaDTO(e.getKey(), e.getValue()))
@@ -45,10 +48,8 @@ public class CatalogoService {
     /** Listado plano para el panel admin (incluye inactivos). */
     @Transactional(readOnly = true)
     public List<ProductoDTO> todos() {
-        return productoRepo.findAllByOrderByCategoriaAscOrdenAsc().stream()
-                .map(p -> new ProductoDTO(p.getId(), p.getCategoria(), p.getMarca(), p.getNombre(),
-                        p.getNotas(),
-                        p.getPresentaciones().stream().map(this::toPresentacionDTO).toList()))
+        return productoRepo.findTodosOrdenados().stream()
+                .map(p -> toProductoDTO(p, p.getPresentaciones().stream().map(this::toPresentacionDTO).toList()))
                 .toList();
     }
 
@@ -57,7 +58,7 @@ public class CatalogoService {
         Producto p = new Producto();
         aplicar(p, in);
         productoRepo.save(p);
-        return toProductoDTO(p);
+        return toProductoDTO(p, p.getPresentaciones().stream().map(this::toPresentacionDTO).toList());
     }
 
     @Transactional
@@ -66,10 +67,9 @@ public class CatalogoService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto no encontrado"));
         aplicar(p, in);
         productoRepo.save(p);
-        return toProductoDTO(p);
+        return toProductoDTO(p, p.getPresentaciones().stream().map(this::toPresentacionDTO).toList());
     }
 
-    /** Baja lógica (no borra el registro para no romper pedidos históricos). */
     @Transactional
     public void desactivar(Long id) {
         Producto p = productoRepo.findById(id)
@@ -79,7 +79,9 @@ public class CatalogoService {
     }
 
     private void aplicar(Producto p, ProductoInput in) {
-        p.setCategoria(in.categoria());
+        Categoria cat = categoriaRepo.findById(in.categoriaId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Categoría inexistente"));
+        p.setCategoria(cat);
         p.setMarca(blankToNull(in.marca()));
         p.setNombre(in.nombre());
         p.setNotas(blankToNull(in.notas()));
@@ -100,9 +102,9 @@ public class CatalogoService {
         return new PresentacionDTO(pr.getId(), pr.getEtiqueta(), pr.getPrecio(), pr.getPrecio() != null);
     }
 
-    private ProductoDTO toProductoDTO(Producto p) {
-        return new ProductoDTO(p.getId(), p.getCategoria(), p.getMarca(), p.getNombre(), p.getNotas(),
-                p.getPresentaciones().stream().map(this::toPresentacionDTO).toList());
+    private ProductoDTO toProductoDTO(Producto p, List<PresentacionDTO> pres) {
+        return new ProductoDTO(p.getId(), p.getCategoria().getId(), p.getCategoria().getNombre(),
+                p.getMarca(), p.getNombre(), p.getNotas(), pres);
     }
 
     private static String blankToNull(String s) {

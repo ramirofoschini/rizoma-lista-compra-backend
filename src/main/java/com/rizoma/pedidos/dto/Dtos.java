@@ -15,10 +15,15 @@ public final class Dtos {
     // ---- Catálogo (respuesta) ------------------------------------------
     public record PresentacionDTO(Long id, String etiqueta, BigDecimal precio, boolean disponible) {}
 
-    public record ProductoDTO(Long id, String categoria, String marca, String nombre,
+    public record ProductoDTO(Long id, Long categoriaId, String categoria, String marca, String nombre,
                               String notas, List<PresentacionDTO> presentaciones) {}
 
     public record CategoriaDTO(String nombre, List<ProductoDTO> productos) {}
+
+    /** Categoría suelta (para el desplegable del admin y el listado). */
+    public record CategoriaItem(Long id, String nombre, Integer orden, boolean activa) {}
+
+    public record CategoriaInput(@NotBlank String nombre, Integer orden, Boolean activa) {}
 
     // ---- Cliente -------------------------------------------------------
     public record ClienteDTO(
@@ -46,7 +51,7 @@ public final class Dtos {
     public record PresentacionInput(Long id, String etiqueta, BigDecimal precio, Boolean activo) {}
 
     public record ProductoInput(
-            @NotBlank String categoria,
+            @NotNull Long categoriaId,
             String marca,
             @NotBlank String nombre,
             String notas,
