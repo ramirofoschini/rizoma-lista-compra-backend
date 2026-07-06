@@ -20,6 +20,10 @@ public class Categoria {
     @Column(name = "activa", nullable = false)
     private boolean activa = true;
 
+    /** Color de la tarjeta en el catálogo (hex, ej "#4a7c59"). Null = color por defecto. */
+    @Column(name = "color")
+    private String color;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getNombre() { return nombre; }
@@ -28,4 +32,6 @@ public class Categoria {
     public void setOrden(Integer orden) { this.orden = orden; }
     public boolean isActiva() { return activa; }
     public void setActiva(boolean activa) { this.activa = activa; }
+    public String getColor() { return color; }
+    public void setColor(String color) { this.color = color; }
 }

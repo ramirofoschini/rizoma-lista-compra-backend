@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,17 +32,19 @@ public class CatalogoService {
     @Transactional(readOnly = true)
     public List<CategoriaDTO> catalogoPorCategoria() {
         Map<String, List<ProductoDTO>> porCat = new LinkedHashMap<>();
+        Map<String, String> colorPorCat = new HashMap<>();
         for (Producto p : productoRepo.findActivosOrdenados()) {
             List<PresentacionDTO> pres = p.getPresentaciones().stream()
                     .filter(Presentacion::isActivo)
                     .map(this::toPresentacionDTO)
                     .toList();
             if (pres.isEmpty()) continue;
-            porCat.computeIfAbsent(p.getCategoria().getNombre(), k -> new ArrayList<>())
-                    .add(toProductoDTO(p, pres));
+            String nombreCat = p.getCategoria().getNombre();
+            porCat.computeIfAbsent(nombreCat, k -> new ArrayList<>()).add(toProductoDTO(p, pres));
+            colorPorCat.putIfAbsent(nombreCat, p.getCategoria().getColor());
         }
         return porCat.entrySet().stream()
-                .map(e -> new CategoriaDTO(e.getKey(), e.getValue()))
+                .map(e -> new CategoriaDTO(e.getKey(), colorPorCat.get(e.getKey()), e.getValue()))
                 .toList();
     }
 

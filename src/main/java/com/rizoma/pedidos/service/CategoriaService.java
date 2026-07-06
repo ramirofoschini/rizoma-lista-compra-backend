@@ -41,6 +41,7 @@ public class CategoriaService {
         c.setNombre(nombre);
         c.setOrden(in.orden() != null ? in.orden() : siguienteOrden());
         c.setActiva(in.activa() == null || in.activa());
+        c.setColor(in.color());
         repo.save(c);
         return toItem(c);
     }
@@ -58,6 +59,7 @@ public class CategoriaService {
         c.setNombre(nombre);
         if (in.orden() != null) c.setOrden(in.orden());
         if (in.activa() != null) c.setActiva(in.activa());
+        c.setColor(in.color());
         repo.save(c);
         return toItem(c);
     }
@@ -77,6 +79,6 @@ public class CategoriaService {
     }
 
     private CategoriaItem toItem(Categoria c) {
-        return new CategoriaItem(c.getId(), c.getNombre(), c.getOrden(), c.isActiva());
+        return new CategoriaItem(c.getId(), c.getNombre(), c.getOrden(), c.isActiva(), c.getColor());
     }
 }

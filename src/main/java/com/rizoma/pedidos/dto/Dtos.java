@@ -18,12 +18,12 @@ public final class Dtos {
     public record ProductoDTO(Long id, Long categoriaId, String categoria, String marca, String nombre,
                               String notas, List<PresentacionDTO> presentaciones) {}
 
-    public record CategoriaDTO(String nombre, List<ProductoDTO> productos) {}
+    public record CategoriaDTO(String nombre, String color, List<ProductoDTO> productos) {}
 
     /** Categoría suelta (para el desplegable del admin y el listado). */
-    public record CategoriaItem(Long id, String nombre, Integer orden, boolean activa) {}
+    public record CategoriaItem(Long id, String nombre, Integer orden, boolean activa, String color) {}
 
-    public record CategoriaInput(@NotBlank String nombre, Integer orden, Boolean activa) {}
+    public record CategoriaInput(@NotBlank String nombre, Integer orden, Boolean activa, String color) {}
 
     // ---- Cliente -------------------------------------------------------
     public record ClienteDTO(
