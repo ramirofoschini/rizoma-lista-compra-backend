@@ -41,17 +41,9 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Buscar la app Java que está corriendo y matarla
-            PID=$(pgrep -f "java -jar app.jar") || true
-            if [ -n "$PID" ]; then
-              kill -9 $PID
-              sleep 2
-            fi
-            
-            # Mover el archivo nuevo a la carpeta principal y renombrarlo
+            # Mover el archivo nuevo a la carpeta principal
             mv /home/ubuntu/target/*.jar /home/ubuntu/app.jar
             rm -rf /home/ubuntu/target
             
-            # Encender el sistema cerrando la puerta (stdin) correctamente
-            nohup ./start.sh > app.log 2>&1 </dev/null &
-            exit 0
+            # Reiniciar el servicio profesionalmente
+            sudo systemctl restart rizoma
