@@ -3,6 +3,7 @@ package com.rizoma.pedidos.web;
 import com.rizoma.pedidos.dto.Dtos.*;
 import com.rizoma.pedidos.service.CatalogoService;
 import com.rizoma.pedidos.service.CategoriaService;
+import com.rizoma.pedidos.service.FolletoImportService;
 import com.rizoma.pedidos.service.ImportService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -20,12 +21,14 @@ public class AdminController {
     private final CatalogoService catalogoService;
     private final CategoriaService categoriaService;
     private final ImportService importService;
+    private final FolletoImportService folletoImportService;
 
     public AdminController(CatalogoService catalogoService, CategoriaService categoriaService,
-                           ImportService importService) {
+                           ImportService importService, FolletoImportService folletoImportService) {
         this.catalogoService = catalogoService;
         this.categoriaService = categoriaService;
         this.importService = importService;
+        this.folletoImportService = folletoImportService;
     }
 
     // ---- Categorías ----
@@ -83,6 +86,28 @@ public class AdminController {
             return importService.importar(file.getInputStream());
         } catch (IOException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No se pudo leer el archivo.");
+        }
+    }
+
+    /** Previsualiza el folleto estilado (no toca la base): devuelve qué entendió + avisos. */
+    @PostMapping("/import/folleto/preview")
+    public FolletoPreview previsualizarFolleto(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Archivo vacío.");
+        try {
+            return folletoImportService.analizar(file.getInputStream());
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No se pudo leer el folleto.");
+        }
+    }
+
+    /** Importa el folleto estilado (upsert). */
+    @PostMapping("/import/folleto")
+    public ImportResultDTO importarFolleto(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Archivo vacío.");
+        try {
+            return folletoImportService.importar(file.getInputStream());
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No se pudo leer el folleto.");
         }
     }
 }

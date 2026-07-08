@@ -61,4 +61,13 @@ public final class Dtos {
     // ---- Import masivo -------------------------------------------------
     public record ImportResultDTO(int productosCreados, int productosActualizados,
                                   int presentaciones, List<String> avisos) {}
+
+    // ---- Previsualización del folleto estilado ----
+    public record PresPreview(String etiqueta, BigDecimal precio) {}
+
+    public record ItemPreview(String categoria, String marca, String nombre,
+                              List<PresPreview> presentaciones, String notas) {}
+
+    public record FolletoPreview(int categorias, int marcas, int productos, int presentaciones,
+                                 List<ItemPreview> items, List<String> avisos) {}
 }
