@@ -45,11 +45,13 @@ jobs:
             PID=$(pgrep -f "java -jar app.jar") || true
             if [ -n "$PID" ]; then
               kill -9 $PID
+              sleep 2
             fi
             
             # Mover el archivo nuevo a la carpeta principal y renombrarlo
             mv /home/ubuntu/target/*.jar /home/ubuntu/app.jar
             rm -rf /home/ubuntu/target
             
-            # Encender el sistema con nohup y tu script mágico
-            nohup ./start.sh > app.log 2>&1 &
+            # Encender el sistema cerrando la puerta (stdin) correctamente
+            nohup ./start.sh > app.log 2>&1 </dev/null &
+            exit 0
